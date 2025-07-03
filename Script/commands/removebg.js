@@ -13,7 +13,7 @@ module.exports.config = {
 };
 
 module.exports.run = async function({ api, event }) {
-    // এখানে আপনার remove.bg API কী বসান
+    //
     const apiKey = "19TH2Ec65EkULY28k9fxfHCd"; 
 
     if (event.type !== "message_reply" || !event.messageReply.attachments || event.messageReply.attachments.length === 0) {
