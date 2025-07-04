@@ -1,99 +1,94 @@
+const fs = require("fs-extra");
+const axios = require("axios");
+const { createCanvas, loadImage, registerFont } = require("canvas");
+
 module.exports.config = {
- name: "pair",
- version: "1.0.1",
- hasPermssion: 0,
- credits: "𝐂𝐘𝐁𝐄𝐑 ☢️_𖣘 -𝐁𝐎𝐓 ⚠️ 𝑻𝑬𝑨𝑴_ ☢️",
- description: "Pair two users with a fun compatibility score",
- commandCategory: "Picture",
- cooldowns: 5,
- dependencies: {
- "axios": "",
- "fs-extra": "",
- "jimp": ""
- }
+    name: "pair",
+    version: "1.0.0",
+    hasPermssion: 0,
+    credits: "Perplexity AI (Adapted from various sources)",
+    description: "Generates a pairing image with another user in the group.",
+    commandCategory: "love",
+    usages: "",
+    cooldowns: 15,
 };
 
-module.exports.onLoad = async () => {
- const { resolve } = global.nodemodule["path"];
- const { existsSync, mkdirSync } = global.nodemodule["fs-extra"];
- const { downloadFile } = global.utils;
- const dirMaterial = __dirname + `/cache/canvas/`;
- const path = resolve(__dirname, 'cache/canvas', 'pairing.png');
- if (!existsSync(dirMaterial + "canvas")) mkdirSync(dirMaterial, { recursive: true });
- if (!existsSync(path)) await downloadFile("https://i.postimg.cc/X7R3CLmb/267378493-3075346446127866-4722502659615516429-n.png", path);
-};
+// Helper function to create the image
+async function makePairImage({ avatar1, avatar2 }) {
+    const backgroundPath = `${__dirname}/cache/pair_bg.png`;
+    const fontPath = `${__dirname}/cache/pair_font.ttf`;
 
-async function makeImage({ one, two }) {
- const fs = global.nodemodule["fs-extra"];
- const path = global.nodemodule["path"];
- const axios = global.nodemodule["axios"];
- const jimp = global.nodemodule["jimp"];
- const __root = path.resolve(__dirname, "cache", "canvas");
+    // Register the custom font
+    registerFont(fontPath, { family: "PairFont" });
 
- let pairing_img = await jimp.read(__root + "/pairing.png");
- let pathImg = __root + `/pairing_${one}_${two}.png`;
- let avatarOne = __root + `/avt_${one}.png`;
- let avatarTwo = __root + `/avt_${two}.png`;
+    const avt1 = await loadImage(avatar1);
+    const avt2 = await loadImage(avatar2);
+    const background = await loadImage(backgroundPath);
 
- let getAvatarOne = (await axios.get(`https://graph.facebook.com/${one}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: 'arraybuffer' })).data;
- fs.writeFileSync(avatarOne, Buffer.from(getAvatarOne, 'utf-8'));
+    const canvas = createCanvas(background.width, background.height);
+    const ctx = canvas.getContext("2d");
 
- let getAvatarTwo = (await axios.get(`https://graph.facebook.com/${two}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: 'arraybuffer' })).data;
- fs.writeFileSync(avatarTwo, Buffer.from(getAvatarTwo, 'utf-8'));
+    ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+    
+    // Draw first avatar (left)
+    ctx.drawImage(avt1, 100, 250, 200, 200); // Adjust coordinates (x, y, width, height) as needed
+    
+    // Draw second avatar (right)
+    ctx.drawImage(avt2, 400, 250, 200, 200); // Adjust coordinates as needed
 
- let circleOne = await jimp.read(await circle(avatarOne));
- let circleTwo = await jimp.read(await circle(avatarTwo));
- pairing_img.composite(circleOne.resize(150, 150), 980, 200).composite(circleTwo.resize(150, 150), 140, 200);
-
- let raw = await pairing_img.getBufferAsync("image/png");
-
- fs.writeFileSync(pathImg, raw);
- fs.unlinkSync(avatarOne);
- fs.unlinkSync(avatarTwo);
-
- return pathImg;
+    const path = `${__dirname}/cache/pair.png`;
+    const buffer = canvas.toBuffer("image/png");
+    fs.writeFileSync(path, buffer);
+    return path;
 }
 
-async function circle(image) {
- const jimp = require("jimp");
- image = await jimp.read(image);
- image.circle();
- return await image.getBufferAsync("image/png");
-}
 
-module.exports.run = async function ({ api, event }) {
- const axios = require("axios");
- const fs = require("fs-extra");
- const { threadID, messageID, senderID } = event;
+module.exports.run = async function({ api, event, Users }) {
+    const { threadID, messageID, senderID } = event;
+    const threadInfo = await api.getThreadInfo(threadID);
+    const { participantIDs } = threadInfo;
 
- // Match percentage
- const percentages = ['21%', '67%', '19%', '37%', '17%', '96%', '52%', '62%', '76%', '83%', '100%', '99%', '0%', '48%'];
- const matchRate = percentages[Math.floor(Math.random() * percentages.length)];
+    // Filter out the sender and the bot
+    const potentialPartners = participantIDs.filter(id => id !== senderID && id !== api.getCurrentUserID());
 
- // Sender info
- let senderInfo = await api.getUserInfo(senderID);
- let senderName = senderInfo[senderID].name;
+    if (potentialPartners.length < 1) {
+        return api.sendMessage("You need more people in this group to find a pair!", threadID, messageID);
+    }
 
- // Random partner
- let threadInfo = await api.getThreadInfo(threadID);
- let participants = threadInfo.participantIDs.filter(id => id !== senderID);
- let partnerID = participants[Math.floor(Math.random() * participants.length)];
- let partnerInfo = await api.getUserInfo(partnerID);
- let partnerName = partnerInfo[partnerID].name;
+    // Randomly choose a partner
+    const partnerID = potentialPartners[Math.floor(Math.random() * potentialPartners.length)];
+    
+    const senderName = await Users.getNameUser(senderID);
+    const partnerName = await Users.getNameUser(partnerID);
 
- // Mentions
- let mentions = [
- { id: senderID, tag: senderName },
- { id: partnerID, tag: partnerName }
- ];
+    const avatar1 = `https://graph.facebook.com/${senderID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
+    const avatar2 = `https://graph.facebook.com/${partnerID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
 
- // Generate and send image
- let one = senderID, two = partnerID;
- return makeImage({ one, two }).then(path => {
- api.sendMessage({
- body: `🥰 Successful Pairing!\n💌 Wishing you two a lifetime of unexpected happiness – even with a ${matchRate} match!\n💕 Compatibility Score: ${matchRate}\nUnlikely but Unstoppable: [${senderName} + ${partnerName}]👨‍❤️‍👨`,
- mentions,
- attachment: fs.createReadStream(path)
- }, threadID, () => fs.unlinkSync(path), messageID);
- });
+    api.sendMessage("Finding a soulmate for you... 💖", threadID, messageID);
+    
+    try {
+        const path = await makePairImage({ avatar1, avatar2 });
+        
+        const lovePercentage = (Math.random() * (100 - 80) + 80).toFixed(2); // Random percentage between 80-100%
+
+        const msg = {
+            body: `
+┌─ Pair Result ─┐
+
+✨ Hey ${senderName}!
+💖 Your soulmate is: ${partnerName}!
+❤️ Love Match: ${lovePercentage}%
+⛓️ Destiny brought you two together~
+
+└─ ✨🌬️ ${—͟͟͞͞💜َ𝐀𝐃𝐌𝐈𝐍ン☛𝐑𝐀F𝐈☚} ✨ ─┘
+`,
+            attachment: fs.createReadStream(path)
+        };
+
+        api.sendMessage(msg, threadID, () => fs.unlinkSync(path), messageID);
+    } catch (error) {
+        console.error("Error creating pair image:", error);
+        api.sendMessage("An error occurred while creating the pair image. Please check if assets (bg, font) are correctly placed.", threadID, messageID);
+    }
 };
+                  
