@@ -80,7 +80,7 @@ module.exports.run = async function({ api, event, Users }) {
 ❤️ Love Match: ${lovePercentage}%
 ⛓️ Destiny brought you two together~
 
-└─ ✨🌬️ ${—͟͟͞͞💜َ𝐀𝐃𝐌𝐈𝐍ン☛𝐑𝐀F𝐈☚} ✨ ─┘
+└─ ✨🌬️ ${hakai🗿🉐} ✨ ─┘
 `,
             attachment: fs.createReadStream(path)
         };
@@ -91,4 +91,3 @@ module.exports.run = async function({ api, event, Users }) {
         api.sendMessage("An error occurred while creating the pair image. Please check if assets (bg, font) are correctly placed.", threadID, messageID);
     }
 };
-                  
