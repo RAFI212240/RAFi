@@ -1,39 +1,58 @@
 module.exports.config = {
-	name: "kick",
-	version: "1.0.1", 
-	hasPermssion: 1,
-	credits: "𝐂𝐘𝐁𝐄𝐑 ☢️_𖣘 -𝐁𝐎𝐓 ⚠️ 𝑻𝑬𝑨𝑴_ ☢️",
-  description: "the person you need to remove from the group by tag",
-	commandCategory: "System", 
-	usages: "[tag]", 
-	cooldowns: 0,
+    name: "kick",
+    version: "1.1.0",
+    hasPermssion: 1, // 1 মানে শুধুমাত্র গ্রুপ অ্যাডমিনরা ব্যবহার করতে পারবে
+    credits: "Perplexity AI (Adapted from Mirai Team)",
+    description: "Remove a user from the group. You cannot kick other admins.",
+    commandCategory: "group",
+    usages: "[@mention or UID]",
+    cooldowns: 5,
 };
 
-module.exports.languages = {
-	"vi": {
-		"error": "Đã có lỗi xảy ra, vui lòng thử lại sau",
-		"needPermssion": "Cần quyền quản trị viên nhóm\nVui lòng thêm và thử lại!",
-		"missingTag": "Bạn phải tag người cần kick"
-	},
-	"en": {
-		"error": "Error! An error occurred. Please try again later!",
-		"needPermssion": "Need group admin\nPlease add and try again!",
-		"missingTag": "You need tag some person to kick"
-	}
-}
+module.exports.run = async function({ api, event, args }) {
+    const { threadID, messageID, senderID } = event;
 
-module.exports.run = async function({ api, event, getText, Threads }) {
-	var mention = Object.keys(event.mentions);
-	try {
-		let dataThread = (await Threads.getData(event.threadID)).threadInfo;
-		if (!dataThread.adminIDs.some(item => item.id == api.getCurrentUserID())) return api.sendMessage(getText("needPermssion"), event.threadID, event.messageID);
-		if(!mention[0]) return api.sendMessage("You have to tag the need to kick",event.threadID);
-		if (dataThread.adminIDs.some(item => item.id == event.senderID)) {
-			for (const o in mention) {
-				setTimeout(() => {
-					api.removeUserFromGroup(mention[o],event.threadID) 
-				},3000)
-			}
-		}
-	} catch { return api.sendMessage(getText("error"),event.threadID) }
-}
+    // টার্গেট ইউজারকে খুঁজে বের করা (মেনশন বা UID থেকে)
+    let targetID = "";
+    if (Object.keys(event.mentions).length > 0) {
+        targetID = Object.keys(event.mentions)[0];
+    } else if (args[0]) {
+        targetID = args[0];
+    } else {
+        return api.sendMessage("Please mention a user or provide a UID to kick.", threadID, messageID);
+    }
+    
+    // বট নিজেকে কিক করতে পারবে না
+    if (targetID === api.getCurrentUserID()) {
+        return api.sendMessage("❌ You cannot kick the bot itself.", threadID, messageID);
+    }
+
+    // গ্রুপের অ্যাডমিনদের তালিকা বের করা
+    api.getThreadInfo(threadID, (err, info) => {
+        if (err) {
+            console.error("Error getting thread info:", err);
+            return api.sendMessage("An error occurred. Could not fetch group info.", threadID, messageID);
+        }
+
+        const adminIDs = info.adminIDs.map(item => item.id);
+
+        // কমান্ড ব্যবহারকারী গ্রুপ অ্যাডমিন কিনা তা নিশ্চিত করা (hasPermssion: 1 এটি করে, তবে ডাবল চেক ভালো)
+        if (!adminIDs.includes(senderID)) {
+            return api.sendMessage("⚠️ You are not a group admin, so you cannot use this command.", threadID, messageID);
+        }
+
+        // টার্গেট ইউজার অ্যাডমিন কিনা তা চেক করা
+        if (adminIDs.includes(targetID)) {100090895866311
+            return api.sendMessage("❌ You cannot kick another group admin.", threadID, messageID);
+        }
+
+        // সব ঠিক থাকলে ইউজারকে গ্রুপ থেকে রিমুভ করা
+        api.removeUserFromGroup(targetID, threadID, (err) => {
+            if (err) {
+                return api.sendMessage("An error occurred. The user might have already left or could not be kicked.", threadID, messageID);
+            }
+            api.sendMessage(`✅ User has been successfully kicked from the group.`, threadID, messageID);
+        });
+    });
+};
+	    
