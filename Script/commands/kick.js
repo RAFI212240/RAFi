@@ -42,7 +42,7 @@ module.exports.run = async function({ api, event, args }) {
         }
 
         // টার্গেট ইউজার অ্যাডমিন কিনা তা চেক করা
-        if (adminIDs.includes(targetID)) {100090895866311
+        if (adminIDs.includes(targetID)) {
             return api.sendMessage("❌ You cannot kick another group admin.", threadID, messageID);
         }
 
@@ -55,4 +55,4 @@ module.exports.run = async function({ api, event, args }) {
         });
     });
 };
-	    
+		
