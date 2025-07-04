@@ -16,14 +16,6 @@ module.exports = function ({ api, models, Users, Threads, Currencies }) {
     const threadSetting = threadData.get(threadID) || {}
     const prefixRegex = new RegExp(`^(<@!?${senderID}>|${escapeRegex((threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : PREFIX)})\\s*`);
     if (!prefixRegex.test(body)) return;
-    // === BOTMODE Check ===
-// If bot mode is 'adminOnly' and the user is not a bot admin, do nothing.
-if (global.config.BOTMODE === "adminOnly" && !global.config.ADMINBOT.includes(event.senderID)) {
-    return; // This stops the command from executing
-}
-// === End BOTMODE Check ===
-// <<<------------------------------------<<<
-    
     const adminbot = require('./../../config.json');
 //// admin -pa /////
     if(!global.data.allThreadID.includes(threadID) && !ADMINBOT.includes(senderID) && adminbot.adminPaOnly == true)
