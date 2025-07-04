@@ -1,64 +1,77 @@
-const { MessageEntity } = require('node-telegram-bot-api');
-
-module.exports = {
-  name: 'help',
-  adminOnly: false,
-  ownerOnly: false,
-  category: 'Utility',
-  description: 'Show all available commands',
-  guide: 'Use /help to see all commands',
-  execute: async (bot, msg) => {
-    const chatId = msg.chat.id;
-    const commands = bot.commands;
-
-    if (!commands) {
-      return bot.sendMessage(chatId, 'Error: Commands not available. Please try again later.');
-    }
-
-    const createCommandList = (cmds) => {
-      const commandList = Object.entries(cmds)
-        .map(([name, cmd]) => `• /${name} - ${cmd.description || ''}`)
-        .join('\n');
-      
-      return `???? *Available Commands*\n\n${commandList}`;
-    };
-
-    const addDesign = (text) => {
-      const separator = '━'.repeat(30);
-      return `${separator}\n${text}\n${separator}`;
-    };
-
-    const getBotInfo = async () => {
-      try {
-        const botInfo = await bot.getMe();
-        const ownerId = process.env.OWNER_ID;
-        let ownerName = 'Unknown';
-
-        if (ownerId) {
-          try {
-            const chatMember = await bot.getChatMember(ownerId, ownerId);
-            ownerName = chatMember.user.first_name || 'Unknown';
-          } catch (error) {
-            console.error('Error fetching owner info:', error);
-          }
-        }
-
-        return `\n\n???? Bot: ${botInfo.first_name}\n???? Owner: ${ownerName}`;
-      } catch (error) {
-        console.error('Error fetching bot info:', error);
-        return '\n\nUnable to fetch bot and owner information.';
-      }
-    };
-
-    try {
-      const commandList = createCommandList(commands);
-      const botInfo = await getBotInfo();
-      const finalMessage = addDesign(commandList + botInfo);
-
-      await bot.sendMessage(chatId, finalMessage, { parse_mode: 'Markdown' });
-    } catch (error) {
-      console.error('Error in help command:', error);
-      await bot.sendMessage(chatId, 'An error occurred while fetching the help information. Please try again later.');
-    }
-  }
+module.exports.config = {
+    name: "help",
+    version: "1.0.2",
+    hasPermssion: 0,
+    credits: "Perplexity AI (Adapted from Mirai Team)",
+    description: "Shows all available commands or info about a specific command.",
+    commandCategory: "system",
+    usages: "[command name]",
+    cooldowns: 5,
 };
+
+module.exports.run = async function({ api, event, args }) {
+    const { commands } = global.client;
+    const { threadID, messageID } = event;
+    const command = commands.get((args[0] || "").toLowerCase());
+    const prefix = global.config.PREFIX;
+
+    // যদি কোনো নির্দিষ্ট কমান্ডের জন্য help চাওয়া হয়
+    if (command) {
+        const { name, version, hasPermssion, credits, description, commandCategory, usages, cooldowns } = command.config;
+        
+        let permText = "";
+        if (hasPermssion === 1) permText = "Group Admin";
+        else if (hasPermssion === 2) permText = "Bot Admin";
+        else permText = "User";
+
+        const helpMessage = `
+━━ 『 Command Info 』 ━━
+⦿ Name: ${name}
+⦿ Description: ${description}
+⦿ Category: ${commandCategory}
+⦿ Version: ${version}
+⦿ Usage: ${prefix}${name} ${usages}
+⦿ Permission: ${permText}
+⦿ Cooldown: ${cooldowns} seconds
+⦿ Credits: ${credits}
+        `;
+        return api.sendMessage(helpMessage, threadID, messageID);
+    }
+
+    // যদি সব কমান্ডের তালিকা চাওয়া হয়
+    const categories = {};
+    for (const cmd of commands.values()) {
+        const category = cmd.config.commandCategory || "No Category";
+        if (!categories[category]) {
+            categories[category] = [];
+        }
+        categories[category].push(cmd.config.name);
+    }
+
+    let msg = `
+🌸┌─────────────────┐🌸
+      🌟│  iconic bot 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬   │🌟
+      🌸└─────────────────┘🌸
+
+✨ 𝓣𝓸𝓽𝓪𝓵 𝓒𝓸𝓶𝓶𝓪𝓷𝓭𝓼: ${commands.size}
+🦋 𝓟𝓻𝓮𝓯𝓲𝔁: [ ${prefix} ]
+🎀𝐉𝐨𝐢𝐧 𝐨𝐮𝐫 𝐌𝐚𝐢𝐧 𝐠𝐜: [error]
+
+      🌼═══════════════💌
+`;
+
+    const sortedCategories = Object.keys(categories).sort();
+
+    for (const category of sortedCategories) {
+        msg += `
+🖤┌───【 ${category.toUpperCase()} 】───┐🦋
+🎀 │ ${categories[category].join('  ✧  ')}
+🌷└─────────────────┘🌸
+`;
+    }
+
+    msg += "\n📌 Type " + `"${prefix}help [command name]"` + " to get details about a specific command.";
+
+    return api.sendMessage(msg, threadID, messageID);
+};
+      
